@@ -1,111 +1,146 @@
-import './App.css';
+// combines both Google Maps API and REST Countries API in the main app
 
-const topSongs = [
-  {
-    id: 1,
-    name: 'Marea (we\'ve lost dancing)',
-    viewer: '310,790,748',
-    duration: '4:45',
-  },
-  {
-    id: 2,
-    name: 'Turn On The Lights again.. (feat. Future',
-    viewer: '177,550,875',
-    duration: '4:27',
-  },
-  {
-    id: 3,
-    name: 'Delilah (pull me out of this)',
-    viewer: '151,616,610',
-    duration: '4:10',
-  },
-  {
-    id: 4,
-    name: 'Rumble',
-    viewer: '124,906,696',
-    duration: '2:26',
-  },
-  {
-    id: 5,
-    name: 'Jungle',
-    viewer: '124,244,633',
-    duration: '3:18',
-  }
-]
-
-const concerts = [
-  {
-    id: 1,
-    location: 'Bonnaroo',
-    date: 'June 16, 2024',
-    city: 'Manchester',
-  },
-  {
-    id: 2,
-    location: 'Syd For Solen',
-    date: 'August 8, 2024',
-    city: 'Copenhagen',
-  },
-  {
-    id: 3,
-    location: 'Flow Festival',
-    date: 'August 8, 2024',
-    city: 'Helsinki',
-  } 
-]
-
-function FredInfo() {
-  return (
-    <div>
-      <h1>Fred Again</h1>
-      <p>Frederick John Philip Gibson as known as Fred again is a producer, songwriter and a DJ who is taking the electroni/house music world by storm. He born on July 19, 1993 in London, England. The reason why Fred Again has made such a splash is that he approaches music in a very creative and innovative way. He finds unique voice memos and video clips and integrates them into his music. Below we have listed some of Fred Again's most popular songs and his upcoming concerts for you.</p>
-    </div>
-  );
-}
-
-function TopSongs() {
-  const listSongs = topSongs.map(song =>
-    <li key={song.id}>
-      {song.name} - 
-      {/* condition to change the viewer color to red if it is larger than 150,000,000 */}
-      <span style={{ color: parseInt(song.viewer.replace(/,/g, '')) > 150000000 ? 'red' : 'white' }}>
-        {song.viewer}
-      </span> 
-      - {song.duration}
-    </li>
-  );
-  return (
-    <div>
-      <h2>Top Songs</h2>
-      <ul>{listSongs}</ul>
-    </div>
-  )
-}
-
-
-function Concerts() {
-  const listConcerts = concerts.map(concert =>
-    <li key={concert.id}>
-      {concert.date} - {concert.location} - {concert.city}
-    </li>
-  );
-  return (
-    <div>
-      <h2>Upcoming Concerts</h2>
-      <ul>{listConcerts}</ul>
-    </div>
-  );
-}
-
+import React, { useState } from 'react';
+import MapComponent from './MapComponent';
+import 'bootstrap/dist/css/bootstrap.min.css';
+import { Card, Spinner } from 'react-bootstrap';
 
 function App() {
+  const [countryInfo, setCountryInfo] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [hoverStyle, setHoverStyle] = useState({});
+  const [error, setError] = useState('');
+
+  const handleMapClick = async (event) => {
+    setLoading(true);
+    setError('');
+    const lat = event.latLng.lat();
+    const lng = event.latLng.lng();
+    const geocoder = new window.google.maps.Geocoder();
+
+    geocoder.geocode({ location: { lat, lng } }, async (results, status) => {
+      if (status === 'OK') {
+        const addressComponents = results[0].address_components;
+        const countryComponent = addressComponents.find(component => component.types.includes('country'));
+        if (countryComponent) {
+          const country = countryComponent.long_name;
+          //  the usage of second api
+          fetch(`https://restcountries.com/v3.1/name/${country}`)
+            .then(response => response.json())
+            .then(data => {
+              const countryData = data[0];
+              setCountryInfo({
+                country: countryData.name.common,
+                flag: countryData.flags.svg,
+                population: countryData.population,
+                flagDescription: countryData.flags.alt
+              });
+            })
+            .catch(error => {
+              console.error('Failed to fetch country data', error);
+              setError('Failed to fetch country information, please try clicking somewhere else.');
+              setCountryInfo(null);
+            })
+            .finally(() => setLoading(false));
+        } else {
+          setError('No country found at this location, please click somewhere else.');
+          setCountryInfo(null);
+          setLoading(false);
+        }
+      } else {
+        console.error('Geocoder failed due to: ' + status);
+        setError('Geocoder error. Please try again.');
+        setCountryInfo(null);
+        setLoading(false);
+      }
+    });
+  };
+
+  // styling for 3D visual effect
+  const cardHoverEnter = () => {
+    setHoverStyle({
+      transform: 'translateY(-10px) scale(1.05)',
+      boxShadow: '0 20px 40px rgba(0,0,0,0.15)'
+    });
+  };
+
+  const cardHoverLeave = () => {
+    setHoverStyle({});
+  };
+
+  const appStyle = {
+    textAlign: 'center',
+    backgroundColor: '#6B7FD7', 
+    minHeight: '100vh',
+    paddingTop: '5vh',
+  };
+
+  const titleStyle = {
+    color: '#DDFBD2', 
+    marginBottom: '1vh'
+  };
+
+  const mapHolderStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    paddingBottom: '3vh'
+  };
+
+  const cardStyle = {
+    width: '60vw',
+    backgroundColor: '#9448BC', 
+    marginTop: '3vh',
+    textAlign: 'center',
+    boxShadow: '0 4px 8px rgba(0,0,0,0.25)',
+    borderColor: '#4C2A85' 
+  };
+
+  const cardTextStyle = {
+    fontSize: '1.25em',
+    color: '#fff',
+  };
+
+  const spinnerStyle = {
+    color: '#DDFBD2', 
+    marginTop: '3vh'
+  };
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <FredInfo/>
-        <TopSongs/>
-        <Concerts/>
-      </header>
+    <div className="App" style={appStyle}>
+      <h1 style={titleStyle}>Country Information</h1>
+      <p>Click anywhere on the map to see the country name, flag information, and population.</p>
+      <div className='mapHolder' style={mapHolderStyle}>
+        <MapComponent onClick={handleMapClick} />
+        {loading ? (
+          <Spinner animation="border" role="status" style={spinnerStyle}>
+            <span className="visually-hidden">Loading...</span>
+          </Spinner>
+        ) : error ? (
+          <Card style={cardStyle}>
+            <Card.Body>
+              <Card.Text style={cardTextStyle}>
+                {error}
+              </Card.Text>
+            </Card.Body>
+          </Card>
+        ) : countryInfo && (
+          <Card style={{...cardStyle, ...hoverStyle}}
+                onMouseEnter={cardHoverEnter}
+                onMouseLeave={cardHoverLeave}>
+            <Card.Body>
+              <Card.Title style={cardTextStyle}>{countryInfo.country}</Card.Title>
+              <Card.Text style={cardTextStyle}>
+                <img src={countryInfo.flag} alt={`Flag of ${countryInfo.country}`} style={{ height: '100px' }} />
+                <br />
+                Population: {countryInfo.population.toLocaleString()}
+                <br />
+                <small>{countryInfo.flagDescription}</small>
+              </Card.Text>
+            </Card.Body>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
